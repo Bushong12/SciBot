@@ -130,6 +130,9 @@ if __name__ == '__main__':
 		paper.set_affil(paper_author)
 		paper.make_keyword_set()
 		
+		if paper.PDFID == 'na':
+			continue
+		
 		# output all the data 
 		paper_data = "{},{},{},{},{},{},{},{},{},{}".format(paper.PID, 
 													  paper.PDFID, 
