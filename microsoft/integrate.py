@@ -1,4 +1,5 @@
 import sys
+import os
 
 def init_author_dict():
 	# maps AID to author name
@@ -58,6 +59,15 @@ def concat_list(li):
 		else:
 			str += x
 	return str
+
+def tokenizer(text):
+	ret = []
+	for x in [',','.','--','!','?',';','(',')','/','"']:
+		text = text.replace(x,' '+x+' ')
+	for word in text.split(' '):
+		if word == '': continue
+		ret.append(word.lower())
+	return ret
 	
 class Paper(object):
 	def __init__(self, pid, title, year, conf):
@@ -104,6 +114,18 @@ if __name__ == '__main__':
 	paper_author = init_paper_author_dict()
 	paper_keywords = init_paper_keywords_dict()
 	index_dict = init_index_dict()
+	entity_candidates = dict()
+	stopwords = set()
+
+	# create set of entity candidates
+	for key in paper_keywords:
+		for word in paper_keywords[key]:
+			entity_candidates[word] = 0
+
+	#create set of stopwords
+	for line in open('stopwords.txt'):
+		word = line.strip('\r\n').lower()
+		stopwords.add(word)
 	
 	# CSV header
 	print("PID,PDFID,title,conf,folder,year,affil,authors,author_ids,keywords")
@@ -128,7 +150,7 @@ if __name__ == '__main__':
 		paper = Paper(PID, title, year, conf)
 		paper.make_author_sets()
 		paper.set_affil(paper_author)
-		paper.make_keyword_set()
+		temp_key = paper.make_keyword_set()
 		
 		if paper.PDFID == 'na':
 			continue
@@ -145,4 +167,27 @@ if __name__ == '__main__':
 													  concat_list(paper.author_ids),
 													  concat_list(paper.keywords)
 													)
-		print(paper_data)
+		#print(paper_data)
+
+	all_files = list()
+	# walk through all directories
+	for root, dirs, files in os.walk("../text"):
+		for subdir in dirs:
+			path = os.path.join(root, subdir)
+			for subroot, subdirs, subfiles in os.walk(path):
+				for file_name in subfiles:
+					file_path = os.path.join(path, file_name)
+					all_files.append(file_path)
+
+	# scan the words in all files to get counts for entity words
+	for doc in all_files:
+		for line in open(doc):
+			temp = tokenizer(line.rstrip())
+			for word in temp:
+				if word in stopwords or len(word) == 1 or word.isdigit(): continue
+				if not word in entity_candidates:
+					entity_candidates[word] = 0
+				entity_candidates[word] += 1
+	print(entity_candidates)
+
+
