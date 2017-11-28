@@ -61,6 +61,8 @@ def concat_list(li):
 	return str
 
 def tokenizer(text):
+	# based on example code given in the ResponseBot Demo
+	# this processes texts into a form that is simpler to analyze
 	ret = []
 	for x in [',','.','--','!','?',';','(',')','/','"']:
 		text = text.replace(x,' '+x+' ')
@@ -115,6 +117,7 @@ if __name__ == '__main__':
 	paper_keywords = init_paper_keywords_dict()
 	index_dict = init_index_dict()
 	entity_candidates = dict()
+	allwords = [] # list containing the important words from each document that we'd want to scan through
 	stopwords = set()
 
 	# create set of entity candidates
@@ -122,7 +125,7 @@ if __name__ == '__main__':
 		for word in paper_keywords[key]:
 			entity_candidates[word] = 0
 
-	#create set of stopwords
+	# create set of stopwords - ResponseBot #2
 	for line in open('stopwords.txt'):
 		word = line.strip('\r\n').lower()
 		stopwords.add(word)
@@ -179,7 +182,16 @@ if __name__ == '__main__':
 					file_path = os.path.join(path, file_name)
 					all_files.append(file_path)
 
-	# scan the words in all files to get counts for entity words
+	# create list of lists of all important words in the documents (ResponseBot 1)
+	for doc in all_files:
+		for line in open(doc):
+			words = tokenizer(line.rstrip())
+			allwords.append(words)
+	#for words in allwords: print words
+	
+
+	'''
+	# scan the words in all files to get support counts for entity words
 	for doc in all_files:
 		for line in open(doc):
 			temp = tokenizer(line.rstrip())
@@ -189,5 +201,119 @@ if __name__ == '__main__':
 					entity_candidates[word] = 0
 				entity_candidates[word] += 1
 	print(entity_candidates)
+	#output
+	for [word,support] in sorted(entity_candidates.items(), key=lambda x:-x[1]):
+		if support == 1: break
+		print word,support
+	'''
+
+	# find the support for each entity candidate (ResponseBot 2)
+	word2support = {}
+	for words in allwords:
+		for word in set(words):
+			if word in stopwords or len(word) == 1 or word.isdigit(): continue
+			if not word in word2support:
+				word2support[word] = 0
+			word2support[word] += 1
+	# output
+	for [word,support] in sorted(word2support.items(),key=lambda x:-x[1]):
+		if support == 1: break
+		print word,support
+
+	# Find bigram for each entity candidate (ResponseBot 3)
+	word2count = {}
+	for words in allwords:
+		for word in words:
+			if word in stopwordset or len(word) == 1 or word.isdigit(): continue
+			if not word in word2count:
+				word2count[word] = 0
+				word2count[word] += 1
+	bigram2score = {} # bigram's count, first word's count, second word's count, significance score
+	L = 0
+	for words in responses:
+		n = len(words)
+		L += n
+		for i in range(0, n-1):
+			if words[i] in word2count and words[i+1] in word2count:
+				bigram = words[i] + '_' + words[i+1]
+				if not bigram in bigram2score:
+					bigram2score[bigram] = [0,word2count[words[i]],word2count[words[i+1]],0.0]
+				bigram2score[bigram][0] += 1
+	for bigram in bigram2score:
+		bigram2score[bigram][3] = (1.0*bigram2score[bigram][0]-1.0*bigram2score[bigram][1]*bigram2score[bigram][2]/L)/((1.0*bigram2score[bigram][0])**0.5)
+	# output
+	print 'bigram', 'count-bigram', 'count-first-word','count-second-word','significance-score'
+	for [bigram,score] in sorted(bigram2score.items(),key=lambda x:-x[1][3]):
+		print bigram,score[0],score[1],score[2],score[3]
+
+	# find transactions for bigrams (ResponseBot 4)
+	bigramdict = {}
+	for bigram in bigram2score:
+		if bigram2score[bigram][0] > 1:
+			[firstword,secondword] = bigram.split('_')
+			if not firstword in bigramdict:
+				bigramdict[firstword] = set()
+			bigramdict[firstword].add(secondword)
+	transactions = [] # response
+	for words in allwords:
+		transaction = set() # set of words/bigrams
+		n = len(words)
+		i = 0
+		while i < n:
+			if words[i] in bigramdict and i+1 < n and words[i+1] in bigramdict[words[i]]:
+				transaction.add(words[i]+'_'+words[i+1])
+				i += 2
+				continue
+			if words[i] in stopwordset or len(words[i]) == 1 or words[i].isdigit():
+				i += 1
+				continue
+			transaction.add(words[i])
+			i += 1
+		transactions.append(list(transaction))
+	# output
+	for transaction in transactions:
+		print transaction
+
+
+	# Apriori (ResponseBot 5)
+	# http://www.borgelt.net/pyfim.html	
+	from fim import apriori, fpgrowth
+	patterns = apriori(transactions,supp=-3) # +: percentage -: absolute number
+	# output
+	print '-------- Apriori --------'
+	for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
+		print pattern,support
+	print 'Number of patterns:',len(patterns)
+
+	# FP-Growth (ResponseBot 6)
+	patterns = fpgrowth(transactions,supp=-3)
+	# output
+	print '-------- FP-Growth --------'
+	for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
+		print pattern,support
+	print 'Number of patterns:',len(patterns)
+
+	# Closed Non-Single Itemsets (ResponseBot 7)
+	patterns = fpgrowth(transactions,target='c',supp=-2,zmin=2)
+	# output
+	print '-------- Closed Non-single Itemsets --------'
+	for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
+		print pattern,support
+	print 'Number of patterns:',len(patterns)
+
+
+	# One-to-Many Association Rules (ResponseBot 8)
+	rules = apriori(transactions,target='r',supp=-2,conf=70,report='sc')
+	# output
+	print '-------- One-to-Many Association Rules --------'
+	for (ruleleft,ruleright,support,confidence) in sorted(rules,key=lambda x:x[0]):
+		print ruleleft,'-->',ruleright,support,confidence
+	print 'Number of rules:',len(rules)
+
+
+
+
+
+
 
 
