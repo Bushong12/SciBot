@@ -212,6 +212,7 @@ if __name__ == '__main__':
 	for words in allwords:
 		for word in set(words):
 			if word in stopwords or len(word) == 1 or word.isdigit(): continue
+			if not word.isalnum(): continue
 			if not word in word2support:
 				word2support[word] = 0
 			word2support[word] += 1
@@ -225,6 +226,7 @@ if __name__ == '__main__':
 	for words in allwords:
 		for word in words:
 			if word in stopwords or len(word) == 1 or word.isdigit(): continue
+			if not word.isalnum(): continue
 			if not word in word2count:
 				word2count[word] = 0
 			word2count[word] += 1
@@ -246,11 +248,16 @@ if __name__ == '__main__':
 	for [bigram,score] in sorted(bigram2score.items(),key=lambda x:-x[1][3]):
 		print bigram,score[0],score[1],score[2],score[3]
 
+
+
 	# find transactions for bigrams (ResponseBot 4)
 	bigramdict = {}
 	for bigram in bigram2score:
 		if bigram2score[bigram][0] > 1:
-			[firstword,secondword] = bigram.split('_')
+			#[firstword,secondword] = bigram.split('_')
+			firstword = bigram.split('_')[0]
+			secondword = bigram.split('_')[0]
+			#print bigram.split('_')
 			if not firstword in bigramdict:
 				bigramdict[firstword] = set()
 			bigramdict[firstword].add(secondword)
