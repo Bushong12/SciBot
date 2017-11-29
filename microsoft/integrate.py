@@ -224,13 +224,13 @@ if __name__ == '__main__':
 	word2count = {}
 	for words in allwords:
 		for word in words:
-			if word in stopwordset or len(word) == 1 or word.isdigit(): continue
+			if word in stopwords or len(word) == 1 or word.isdigit(): continue
 			if not word in word2count:
 				word2count[word] = 0
 				word2count[word] += 1
 	bigram2score = {} # bigram's count, first word's count, second word's count, significance score
 	L = 0
-	for words in responses:
+	for words in allwords:
 		n = len(words)
 		L += n
 		for i in range(0, n-1):
@@ -264,7 +264,7 @@ if __name__ == '__main__':
 				transaction.add(words[i]+'_'+words[i+1])
 				i += 2
 				continue
-			if words[i] in stopwordset or len(words[i]) == 1 or words[i].isdigit():
+			if words[i] in stopwords or len(words[i]) == 1 or words[i].isdigit():
 				i += 1
 				continue
 			transaction.add(words[i])
