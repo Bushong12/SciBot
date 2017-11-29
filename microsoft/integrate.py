@@ -227,7 +227,7 @@ if __name__ == '__main__':
 			if word in stopwords or len(word) == 1 or word.isdigit(): continue
 			if not word in word2count:
 				word2count[word] = 0
-				word2count[word] += 1
+			word2count[word] += 1
 	bigram2score = {} # bigram's count, first word's count, second word's count, significance score
 	L = 0
 	for words in allwords:
