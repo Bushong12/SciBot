@@ -4,3 +4,5 @@ Data Science Fall 2017 project to perform data processing, cleaning, and analysi
 Data Integration and Cleaning:
 ------------------------------
     python3 microsoft/integrate.py > data.csv
+	
+	We end up with 5854 words.
