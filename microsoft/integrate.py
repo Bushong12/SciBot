@@ -111,6 +111,18 @@ class Paper(object):
 			self.keywords.add('na')
 	
 if __name__ == '__main__':
+	# create new files
+	# csv for PID,PDFID,title,conf,folder,year,affil,authors,author_ids,keywords
+	integrated_data = open('integrated.csv', 'w+')
+	# file for storing all the keywords that we generate
+	new_keywords = open('our_keywords.txt', 'w+')
+	# file for keyword bigrams
+	bigram_file = open('keyword_bigrams.txt', 'w+')
+	# file for storing bigram transactions
+	transaction_file = open('keyword_transactions.txt', 'w+')
+	# file for result of Apriori
+	apriori_file = ('keyword_apriori.txt', 'w+')
+	
 	# initialize the dictionaries 
 	author_names = init_author_dict()
 	paper_author = init_paper_author_dict()
@@ -131,7 +143,7 @@ if __name__ == '__main__':
 		stopwords.add(word)
 	
 	# CSV header
-	print("PID,PDFID,title,conf,folder,year,affil,authors,author_ids,keywords")
+	integrated_data.write("PID,PDFID,title,conf,folder,year,affil,authors,author_ids,keywords\n")
 	
 	# process Papers
 	for line in open('Papers.txt'):
@@ -159,7 +171,7 @@ if __name__ == '__main__':
 			continue
 		
 		# output all the data 
-		paper_data = "{},{},{},{},{},{},{},{},{},{}".format(paper.PID, 
+		paper_data = "{},{},{},{},{},{},{},{},{},{}\n".format(paper.PID, 
 													  paper.PDFID, 
 													  paper.title, 
 													  paper.conf,
@@ -170,10 +182,11 @@ if __name__ == '__main__':
 													  concat_list(paper.author_ids),
 													  concat_list(paper.keywords)
 													)
-		#print(paper_data)
+		integrated_data.write(paper_data)
 
 	all_files = list()
 	# walk through all directories
+	print("Collecting words from documents...")
 	for root, dirs, files in os.walk("../text"):
 		for subdir in dirs:
 			path = os.path.join(root, subdir)
@@ -209,6 +222,8 @@ if __name__ == '__main__':
 
 	# find the support for each entity candidate (ResponseBot 2)
 	word2support = {}
+	print("Calculating support for each word...")
+	#sys.stdout.write("Calculating support for each word.")
 	for words in allwords:
 		for word in set(words):
 			if word in stopwords or len(word) == 1 or word.isdigit(): continue
@@ -219,10 +234,13 @@ if __name__ == '__main__':
 	# output
 	for [word,support] in sorted(word2support.items(),key=lambda x:-x[1]):
 		if support == 1: break
-		print word,support
+		new_keywords.write('{} {}\n'.format(word, support))
+		#sys.stdout.write('.')
+	#print('\n')
 
 	# Find bigram for each entity candidate (ResponseBot 3)
 	word2count = {}
+	print("Finding Bigrams...")
 	for words in allwords:
 		for word in words:
 			if word in stopwords or len(word) == 1 or word.isdigit(): continue
@@ -232,6 +250,8 @@ if __name__ == '__main__':
 			word2count[word] += 1
 	bigram2score = {} # bigram's count, first word's count, second word's count, significance score
 	L = 0
+	print("Counting Bigrams...")
+	#sys.stdout.write("Counting Bigrams.")
 	for words in allwords:
 		n = len(words)
 		L += n
@@ -244,13 +264,15 @@ if __name__ == '__main__':
 	for bigram in bigram2score:
 		bigram2score[bigram][3] = (1.0*bigram2score[bigram][0]-1.0*bigram2score[bigram][1]*bigram2score[bigram][2]/L)/((1.0*bigram2score[bigram][0])**0.5)
 	# output
-	print 'bigram', 'count-bigram', 'count-first-word','count-second-word','significance-score'
+	bigram_file.write('bigram,count-bigram,count-first-word,count-second-word,significance-score\n')
 	for [bigram,score] in sorted(bigram2score.items(),key=lambda x:-x[1][3]):
-		print bigram,score[0],score[1],score[2],score[3]
-
+		bigram_file.write('{} {} {} {} {}\n'.format(bigram, score[0], score[1], score[2], score[3]))
+		#sys.stdout.write('.')
 
 
 	# find transactions for bigrams (ResponseBot 4)
+	print("Finding Transactions...")
+	#sys.stdout.write("Finding Transactions")
 	bigramdict = {}
 	for bigram in bigram2score:
 		if bigram2score[bigram][0] > 1:
@@ -279,43 +301,46 @@ if __name__ == '__main__':
 		transactions.append(list(transaction))
 	# output
 	for transaction in transactions:
-		print transaction
+		if transaction.empty(): continue
+		t = ','.join
+		trasaction_file.write('{}\n'.format(t))
+		#sys.stdout.write('.')
 
-
+	print("Preforming Apriori...")
 	# Apriori (ResponseBot 5)
 	# http://www.borgelt.net/pyfim.html	
 	from fim import apriori, fpgrowth
 	patterns = apriori(transactions,supp=-3) # +: percentage -: absolute number
 	# output
-	print '-------- Apriori --------'
+	apriori_file.write('-------- Apriori --------\n')
 	for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
-		print pattern,support
-	print 'Number of patterns:',len(patterns)
+		apriori_file.write('{} {} \n'.format(pattern, support))
+	apriori_file.write('Number of patterns: {}\n'.format(len(patterns)))
 
-	# FP-Growth (ResponseBot 6)
-	patterns = fpgrowth(transactions,supp=-3)
-	# output
-	print '-------- FP-Growth --------'
-	for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
-		print pattern,support
-	print 'Number of patterns:',len(patterns)
+	#FP-Growth (ResponseBot 6)
+	# patterns = fpgrowth(transactions,supp=-3)
+	#output
+	# fp_file.write('-------- FP-Growth --------\n')
+	# for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
+		# fp_file.write('{} {}\n'.format(pattern, support)
+	# fp_file.write('Number of patterns: {}'.format(len(patterns)))
 
-	# Closed Non-Single Itemsets (ResponseBot 7)
-	patterns = fpgrowth(transactions,target='c',supp=-2,zmin=2)
-	# output
-	print '-------- Closed Non-single Itemsets --------'
-	for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
-		print pattern,support
-	print 'Number of patterns:',len(patterns)
+	#Closed Non-Single Itemsets (ResponseBot 7)
+	# patterns = fpgrowth(transactions,target='c',supp=-2,zmin=2)
+	#output
+	# print '-------- Closed Non-single Itemsets --------'
+	# for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
+		# print pattern,support
+	# print 'Number of patterns:',len(patterns)
 
 
-	# One-to-Many Association Rules (ResponseBot 8)
-	rules = apriori(transactions,target='r',supp=-2,conf=70,report='sc')
-	# output
-	print '-------- One-to-Many Association Rules --------'
-	for (ruleleft,ruleright,support,confidence) in sorted(rules,key=lambda x:x[0]):
-		print ruleleft,'-->',ruleright,support,confidence
-	print 'Number of rules:',len(rules)
+	#One-to-Many Association Rules (ResponseBot 8)
+	# rules = apriori(transactions,target='r',supp=-2,conf=70,report='sc')
+	#output
+	# print '-------- One-to-Many Association Rules --------'
+	# for (ruleleft,ruleright,support,confidence) in sorted(rules,key=lambda x:x[0]):
+		# print ruleleft,'-->',ruleright,support,confidence
+	# print 'Number of rules:',len(rules)
 
 
 
