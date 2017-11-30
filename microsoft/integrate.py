@@ -109,6 +109,30 @@ class Paper(object):
 			self.keywords = paper_keywords[self.PID]
 		except KeyError:
 			self.keywords.add('na')
+
+def check_string_guality(str):
+	if '<' in str:
+		return False
+	if '>' in str:
+		return False
+	if '[' in str:
+		return False
+	if ']' in str:
+		return False
+	if '{' in str:
+		return False
+	if '}' in str:
+		return False
+	if '=' in str:
+		return False
+	if '+' in str:
+		return False
+	if ':' in str:
+		return False
+	if '-' in str:
+		return False
+	
+	return True
 	
 if __name__ == '__main__':
 	# create new files
@@ -121,7 +145,9 @@ if __name__ == '__main__':
 	# file for storing bigram transactions
 	transaction_file = open('keyword_transactions.txt', 'w+')
 	# file for result of Apriori
-	apriori_file = ('keyword_apriori.txt', 'w+')
+	apriori_file = open('keyword_apriori.txt', 'w+')
+	# file for result of non-singe itemsets
+	nonsingle_file = open('keyword_counts.txt', 'w+')
 	
 	# initialize the dictionaries 
 	author_names = init_author_dict()
@@ -186,6 +212,8 @@ if __name__ == '__main__':
 
 	all_files = list()
 	# walk through all directories
+	num_test = 0
+	test_files = list()
 	print("Collecting words from documents...")
 	for root, dirs, files in os.walk("../text"):
 		for subdir in dirs:
@@ -194,6 +222,9 @@ if __name__ == '__main__':
 				for file_name in subfiles:
 					file_path = os.path.join(path, file_name)
 					all_files.append(file_path)
+					if num_test < 10:
+						test_files.append(file_path)
+						num_test += 1
 
 	# create list of lists of all important words in the documents (ResponseBot 1)
 	for doc in all_files:
@@ -301,21 +332,28 @@ if __name__ == '__main__':
 		transactions.append(list(transaction))
 	# output
 	for transaction in transactions:
-		if transaction.empty(): continue
-		t = ','.join
-		trasaction_file.write('{}\n'.format(t))
+		if not transaction: continue
+		t = ','.join(transaction)
+		if check_string_guality(t) is False: continue
+		t = t.replace('#', '')
+		t = t.replace('*', '')
+		transaction_file.write('{}\n'.format(t))
 		#sys.stdout.write('.')
 
 	print("Preforming Apriori...")
 	# Apriori (ResponseBot 5)
 	# http://www.borgelt.net/pyfim.html	
 	from fim import apriori, fpgrowth
-	patterns = apriori(transactions,supp=-3) # +: percentage -: absolute number
+	patterns = apriori(transactions,supp=-1000) # +: percentage -: absolute number
+	#print(type(patterns)) -> patterns is a list
 	# output
-	apriori_file.write('-------- Apriori --------\n')
 	for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
-		apriori_file.write('{} {} \n'.format(pattern, support))
+		#print(type(pattern)) -> pattern is a tuple
+		if len(set(pattern)) <= 1: continue
+		p = ','.join(pattern)
+		apriori_file.write('{} {} \n'.format(p, str(support)))
 	apriori_file.write('Number of patterns: {}\n'.format(len(patterns)))
+	print('Number of patterns: {}\n'.format(len(patterns)))
 
 	#FP-Growth (ResponseBot 6)
 	# patterns = fpgrowth(transactions,supp=-3)
@@ -326,12 +364,13 @@ if __name__ == '__main__':
 	# fp_file.write('Number of patterns: {}'.format(len(patterns)))
 
 	#Closed Non-Single Itemsets (ResponseBot 7)
-	# patterns = fpgrowth(transactions,target='c',supp=-2,zmin=2)
+	print("Building non-single itemsets...")
+	patterns = fpgrowth(transactions,target='c',supp=-1000,zmin=2)
 	#output
-	# print '-------- Closed Non-single Itemsets --------'
-	# for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
-		# print pattern,support
-	# print 'Number of patterns:',len(patterns)
+	for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
+		p = ','.join(pattern)
+		nonsingle_file.write('{} {} \n'.format(p, str(support)))
+	print 'Number of patterns:',len(patterns)
 
 
 	#One-to-Many Association Rules (ResponseBot 8)
@@ -341,11 +380,5 @@ if __name__ == '__main__':
 	# for (ruleleft,ruleright,support,confidence) in sorted(rules,key=lambda x:x[0]):
 		# print ruleleft,'-->',ruleright,support,confidence
 	# print 'Number of rules:',len(rules)
-
-
-
-
-
-
-
-
+	
+	print("Done.")
