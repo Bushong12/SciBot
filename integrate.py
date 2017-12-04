@@ -102,11 +102,11 @@ def check_string_guality(str):
 
 def SimpleEntityExtraction():
 	paperid_path = []
-	fr = open('index.txt','rb')
+	fr = open('microsoft/index.txt','rb')
 	for line in fr:
 		arr = line.strip('\r\n').split('\t')
 		paperid = arr[2]
-		path = '../text/'+arr[0]+'/'+arr[1]+'.txt'
+		path = 'text/'+arr[0]+'/'+arr[1]+'.txt'
 		paperid_path.append([paperid,path])
 	fr.close()
 	phrase2count = {}
@@ -148,22 +148,22 @@ def SimpleEntityExtraction():
 									phrase2count[phrase] = 0
 								phrase2count[phrase] += 1
 		fr.close()
-	fw = open('phrase2count.txt','w')
+	fw = open('data/phrase2count.txt','w')
 	for [phrase,count] in sorted(phrase2count.items(),key=lambda x:-x[1]):
 		fw.write(phrase+'\t'+str(count)+'\n')
 	fw.close()
 
 def SimpleAttributeExtraction():
 	paperid_path = []
-	fr = open('index.txt','rb')
+	fr = open('microsoft/index.txt','rb')
 	for line in fr:
 		arr = line.strip('\r\n').split('\t')
 		paperid = arr[2]
-		path = '../text/'+arr[0]+'/'+arr[1]+'.txt'
+		path = 'text/'+arr[0]+'/'+arr[1]+'.txt'
 		paperid_path.append([paperid,path])
 	fr.close()
 	index,nindex = [{}],1 # phrase's index
-	fr = open('phrase2count.txt','rb')
+	fr = open('data/phrase2count.txt','rb')
 	for line in fr:
 		arr = line.strip('\r\n').split('\t')
 		phrase = arr[0]
@@ -185,7 +185,7 @@ def SimpleAttributeExtraction():
 			word = words[0]
 		temp[word] = phrase
 	fr.close()
-	fw = open('paper2attributes.txt','w')
+	fw = open('data/paper2attributes.txt','w')
 	for [paperid,path] in paperid_path:
 		attributeset = set()
 		fr = open(path,'rb')
@@ -223,14 +223,14 @@ def SimpleAttributeExtraction():
 
 def SimpleLabelExtraction():
 	paperid2conf = {}
-	fr = open('Papers.txt','rb')
+	fr = open('microsoft/Papers.txt','rb')
 	for line in fr:
 		arr = line.strip('\r\n').split('\t')
 		paperid,conf = arr[0],arr[7]
 		paperid2conf[paperid] = conf
 	fr.close()
-	fw = open('paper2attributes2label.txt','w')
-	fr = open('paper2attributes.txt','rb')
+	fw = open('data/paper2attributes2label.txt','w')
+	fr = open('data/paper2attributes.txt','rb')
 	for line in fr:
 		arr = line.strip('\r\n').split('\t')
 		paperid = arr[0]
@@ -271,7 +271,7 @@ def OutputStr(entry):
 def DecisionTreeFirstFeature():
 	positive = 'kdd' # SIGKDD Conference on Knowledge Discovery and Data Mining
 	paper2label,paper2attributes,attribute2papers = {},{},{}
-	fr = open('paper2attributes2label.txt','rb')
+	fr = open('data/paper2attributes2label.txt','rb')
 	for line in fr:
 		arr = line.strip('\r\n').split('\t')
 		paper = arr[0]
@@ -333,7 +333,7 @@ def DecisionTreeFirstFeature():
 		bestattributeset.add(sorted_attribute_metrics[i][0])
 	print ''
 
-	fw = open('bestattributes.txt','w')
+	fw = open('data/bestattributes.txt','w')
 	for attribute in sorted(bestattributeset):
 		fw.write(attribute+'\n')
 	fw.close()
@@ -341,14 +341,14 @@ def DecisionTreeFirstFeature():
 def NaiveBayes():
 	positive = 'kdd' # SIGKDD Conference on Knowledge Discovery and Data Mining
 	bestattributeset = set()
-	fr = open('bestattributes.txt','rb')
+	fr = open('data/bestattributes.txt','rb')
 	for line in fr:
 		attribute = line.strip('\r\n')
 		bestattributeset.add(attribute)
 	fr.close()
 
 	paper2label,paper2attributes,attribute2papers = {},{},{}
-	fr = open('paper2attributes2label.txt','rb')
+	fr = open('data/paper2attributes2label.txt','rb')
 	for line in fr:
 		arr = line.strip('\r\n').split('\t')
 		attributeset = set(arr[2].split(','))
@@ -436,15 +436,15 @@ def SimpleEntityTyping():
 	wordsets = [set(s_method.split(' ')),set(s_problem.split(' ')),set(s_dataset.split(' ')),set(s_metric.split(' '))]
 
 	paperid_path = []
-	fr = open('index.txt','rb')
+	fr = open('microsoft/index.txt','rb')
 	for line in fr:
 		arr = line.strip('\r\n').split('\t')
 		paperid = arr[2]
-		path = '../text/'+arr[0]+'/'+arr[1]+'.txt'
+		path = 'text/'+arr[0]+'/'+arr[1]+'.txt'
 		paperid_path.append([paperid,path])
 	fr.close()
 	index,nindex = [{}],1 # phrase's index
-	fr = open('phrase2count.txt','rb')
+	fr = open('data/phrase2count.txt','rb')
 	for line in fr:
 		arr = line.strip('\r\n').split('\t')
 		phrase = arr[0]
@@ -514,7 +514,7 @@ def SimpleEntityTyping():
 					continue
 				i += 1
 		fr.close()
-	fw = open('entitytyping.txt','w')
+	fw = open('data/entitytyping.txt','w')
 	s = 'ENTITY\tCOUNT'
 	for c in range(0,n_context): s += '\tWINDOWSIZE'+str(c+1)
 	fw.write(s+'\n')
