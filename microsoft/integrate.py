@@ -106,7 +106,7 @@ def SimpleEntityExtraction():
 	for line in fr:
 		arr = line.strip('\r\n').split('\t')
 		paperid = arr[2]
-		path = 'text/'+arr[0]+'/'+arr[1]+'.txt'
+		path = '../text/'+arr[0]+'/'+arr[1]+'.txt'
 		paperid_path.append([paperid,path])
 	fr.close()
 	phrase2count = {}
@@ -159,7 +159,7 @@ def SimpleAttributeExtraction():
 	for line in fr:
 		arr = line.strip('\r\n').split('\t')
 		paperid = arr[2]
-		path = 'text/'+arr[0]+'/'+arr[1]+'.txt'
+		path = '../text/'+arr[0]+'/'+arr[1]+'.txt'
 		paperid_path.append([paperid,path])
 	fr.close()
 	index,nindex = [{}],1 # phrase's index
@@ -692,7 +692,7 @@ if __name__ == '__main__':
 	# for (ruleleft,ruleright,support,confidence) in sorted(rules,key=lambda x:x[0]):
 		# print ruleleft,'-->',ruleright,support,confidence
 	# print 'Number of rules:',len(rules)
-	'''
+	
 	# Task 2: Entity Name Detection (paperclassification.py functions)
 	SimpleEntityExtraction()
 	SimpleAttributeExtraction()
@@ -700,7 +700,7 @@ if __name__ == '__main__':
 	DecisionTreeFirstFeature()
 	NaiveBayes()
 
-	
+	'''
 	# Task 4: Finding two-four authors that often collaborate
 	# basically we'll do a similar thing we already did with the keywords with the author data
 	author_lists = [] # list of lists of authors on each paper
