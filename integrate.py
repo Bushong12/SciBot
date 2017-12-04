@@ -4,7 +4,7 @@ import os
 def init_author_dict():
 	# maps AID to author name
 	names = dict()
-	for line in open('Authors.txt'):
+	for line in open('microsoft/Authors.txt'):
 		data = line.rstrip().split('\t')
 		AID = data[0]
 		name = data[1]
@@ -14,7 +14,7 @@ def init_author_dict():
 def init_paper_author_dict():
 	# maps PID to list of authors that are a pair of (author_id, affiliation)
 	d = dict()
-	for line in open('PaperAuthorAffiliations.txt'):
+	for line in open('microsoft/PaperAuthorAffiliations.txt'):
 		data = line.rstrip().split('\t')
 		PID = data[0]
 		AID = data[1]
@@ -29,7 +29,7 @@ def init_paper_author_dict():
 def init_paper_keywords_dict():
 	# maps PID to set of keywords found in PaperKeywords.txt
 	keywords = dict()
-	for line in open('PaperKeywords.txt'):
+	for line in open('microsoft/PaperKeywords.txt'):
 		data = line.rstrip().split('\t')
 		PID = data[0]
 		word = data[1]
@@ -41,7 +41,7 @@ def init_paper_keywords_dict():
 def init_index_dict():
 	# maps PID to (PDFID, folder)
 	index = dict()
-	for line in open('index.txt'):
+	for line in open('microsoft/index.txt'):
 		data = line.rstrip().split('\t')
 		folder = data[0]
 		PDFID = data[1]
@@ -60,17 +60,6 @@ def concat_list(li):
 			str += x
 	return str
 
-def tokenizer(text):
-	# based on example code given in the ResponseBot Demo
-	# this processes texts into a form that is simpler to analyze
-	ret = []
-	for x in [',','.','--','!','?',';','(',')','/','"']:
-		text = text.replace(x,' '+x+' ')
-	for word in text.split(' '):
-		if word == '': continue
-		ret.append(word.lower())
-	return ret
-	
 class Paper(object):
 	def __init__(self, pid, title, year, conf):
 		self.PID = pid
@@ -109,8 +98,20 @@ class Paper(object):
 			self.keywords = paper_keywords[self.PID]
 		except KeyError:
 			self.keywords.add('na')
+	
+def tokenizer(text):
+	# based on example code given in the ResponseBot Demo
+	# this processes text into a form that is simpler to analyze
+	ret = []
+	for x in [',','.','--','!','?',';','(',')','/','"']:
+		text = text.replace(x,' '+x+' ')
+	for word in text.split(' '):
+		if word == '': continue
+		ret.append(word.lower())
+	return ret
 
 def check_string_guality(str):
+	# ckeck if a string has any undesired characters
 	if '<' in str:
 		return False
 	if '>' in str:
@@ -133,21 +134,9 @@ def check_string_guality(str):
 		return False
 	
 	return True
-	
 if __name__ == '__main__':
-	# create new files
 	# csv for PID,PDFID,title,conf,folder,year,affil,authors,author_ids,keywords
-	integrated_data = open('integrated.csv', 'w+')
-	# file for storing all the keywords that we generate
-	new_keywords = open('our_keywords.txt', 'w+')
-	# file for keyword bigrams
-	bigram_file = open('keyword_bigrams.txt', 'w+')
-	# file for storing bigram transactions
-	transaction_file = open('keyword_transactions.txt', 'w+')
-	# file for result of Apriori
-	apriori_file = open('keyword_apriori.txt', 'w+')
-	# file for result of non-singe itemsets
-	nonsingle_file = open('keyword_counts.txt', 'w+')
+	integrated_data = open('data/integrated.csv', 'w+')
 	
 	# initialize the dictionaries 
 	author_names = init_author_dict()
@@ -164,7 +153,7 @@ if __name__ == '__main__':
 			entity_candidates[word] = 0
 
 	# create set of stopwords - ResponseBot #2
-	for line in open('stopwords.txt'):
+	for line in open('microsoft/stopwords.txt'):
 		word = line.strip('\r\n').lower()
 		stopwords.add(word)
 	
@@ -172,7 +161,7 @@ if __name__ == '__main__':
 	integrated_data.write("PID,PDFID,title,conf,folder,year,affil,authors,author_ids,keywords\n")
 	
 	# process Papers
-	for line in open('Papers.txt'):
+	for line in open('microsoft/Papers.txt'):
 		data = line.rstrip().split('\t')
 		# parse data
 		PID = data[0]		
@@ -210,24 +199,40 @@ if __name__ == '__main__':
 													)
 		integrated_data.write(paper_data)
 
+		
+	################################## MOVE TO NEW FILE ######################################
+	# file for storing all the keywords that we generate
+	new_keywords = open('data/our_keywords.txt', 'w+')
+	# file for keyword bigrams
+	bigram_file = open('data/keyword_bigrams.txt', 'w+')
+	# file for storing bigram transactions
+	transaction_file = open('data/keyword_transactions.txt', 'w+')
+	# file for result of Apriori
+	apriori_file = open('data/keyword_apriori.txt', 'w+')
+	# file for result of non-singe itemsets
+	nonsingle_file = open('data/keyword_counts.txt', 'w+')
+	
 	all_files = list()
 	# walk through all directories
-	num_test = 0
-	test_files = list()
 	print("Collecting words from documents...")
-	for root, dirs, files in os.walk("../text"):
+	file_list = list()
+	test_files = list()
+	num_test = 0
+	for root, dirs, files in os.walk("text"):
 		for subdir in dirs:
-			path = os.path.join(root, subdir)
-			for subroot, subdirs, subfiles in os.walk(path):
-				for file_name in subfiles:
-					file_path = os.path.join(path, file_name)
-					all_files.append(file_path)
+			dir_path = os.path.join(root, subdir)
+			#print(file_path)
+			for sub_root, sub_dirs, sub_files in os.walk(dir_path):
+				for file_name in sub_files:
+					file_path = os.path.join(dir_path, file_name)
+					#print(file_path)
+					file_list.append(file_path)
 					if num_test < 10:
 						test_files.append(file_path)
 						num_test += 1
 
 	# create list of lists of all important words in the documents (ResponseBot 1)
-	for doc in all_files:
+	for doc in file_list:
 		for line in open(doc):
 			words = tokenizer(line.rstrip())
 			allwords.append(words)
@@ -268,7 +273,7 @@ if __name__ == '__main__':
 		new_keywords.write('{} {}\n'.format(word, support))
 		#sys.stdout.write('.')
 	#print('\n')
-
+	print("Found {} entity candidates".format(str(len(word2support))))
 	# Find bigram for each entity candidate (ResponseBot 3)
 	word2count = {}
 	print("Finding Bigrams...")
@@ -299,7 +304,7 @@ if __name__ == '__main__':
 	for [bigram,score] in sorted(bigram2score.items(),key=lambda x:-x[1][3]):
 		bigram_file.write('{} {} {} {} {}\n'.format(bigram, score[0], score[1], score[2], score[3]))
 		#sys.stdout.write('.')
-
+	print("Found {} bigrams".format(str(len(bigram2score))))
 
 	# find transactions for bigrams (ResponseBot 4)
 	print("Finding Transactions...")
@@ -330,6 +335,7 @@ if __name__ == '__main__':
 			transaction.add(words[i])
 			i += 1
 		transactions.append(list(transaction))
+	print("Found {} transactions".format(str(len(transactions))))
 	# output
 	for transaction in transactions:
 		if not transaction: continue
@@ -364,7 +370,7 @@ if __name__ == '__main__':
 	# fp_file.write('Number of patterns: {}'.format(len(patterns)))
 
 	#Closed Non-Single Itemsets (ResponseBot 7)
-	print("Building non-single itemsets...")
+	print("Building non-single itemsets with FP-Growth...")
 	patterns = fpgrowth(transactions,target='c',supp=-1000,zmin=2)
 	#output
 	for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
