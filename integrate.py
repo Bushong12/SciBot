@@ -1,5 +1,8 @@
 import sys
 import os
+from numpy import log2
+import random
+from fim import apriori, fpgrowth
 
 def init_author_dict():
 	# maps AID to author name
@@ -60,6 +63,481 @@ def concat_list(li):
 			str += x
 	return str
 
+def tokenizer(text):
+	# based on example code given in the ResponseBot Demo
+	# this processes texts into a form that is simpler to analyze
+	ret = []
+	for x in [',','--','!','?',';','(',')','"']: # always remove
+		text = text.replace(x,' '+x+' ')
+	for x in ['.', '/']: # remove only if it's end punctuation
+		text = text.replace(x+' ', ' '+x+' ')
+	for word in text.split(' '):
+		if word == '': continue
+		ret.append(word.lower())
+	return ret
+
+def check_string_guality(str):
+	if '<' in str:
+		return False
+	if '>' in str:
+		return False
+	if '[' in str:
+		return False
+	if ']' in str:
+		return False
+	if '{' in str:
+		return False
+	if '}' in str:
+		return False
+	if '=' in str:
+		return False
+	if '+' in str:
+		return False
+	if ':' in str:
+		return False
+	if '-' in str:
+		return False
+	
+	return True
+
+def SimpleEntityExtraction():
+	paperid_path = []
+	fr = open('index.txt','rb')
+	for line in fr:
+		arr = line.strip('\r\n').split('\t')
+		paperid = arr[2]
+		path = '../text/'+arr[0]+'/'+arr[1]+'.txt'
+		paperid_path.append([paperid,path])
+	fr.close()
+	phrase2count = {}
+	for [paperid,path] in paperid_path:
+		fr = open(path,'rb')
+		for line in fr:
+			arr = line.strip('\r\n').split(' ')
+			n = len(arr)
+			if n < 5: continue
+			for i in range(0,n-2):
+				if arr[i] == '(' and arr[i+2] == ')':
+					abbr = arr[i+1]
+					l = len(abbr)
+					if l > 1 and abbr.isalpha():
+						if i >= l and abbr.isupper():
+							isvalid = True
+							for j in range(0,l):
+								if not abbr[l-1-j].lower() == arr[i-1-j][0].lower():
+									isvalid = False
+							if isvalid:
+								phrase = ''
+								for j in range(0,l):
+									phrase = arr[i-1-j]+' '+phrase
+								phrase = phrase[0:-1].lower()
+								if not phrase in phrase2count:
+									phrase2count[phrase] = 0
+								phrase2count[phrase] += 1
+						if i >= l-1 and abbr[-1] == 's' and arr[i-1][-1] == 's' and abbr[0:-1].isupper():
+							isvalid = True
+							for j in range(1,l):
+								if not abbr[l-1-j].lower() == arr[i-j][0].lower():
+									isvalid = False
+							if isvalid:
+								phrase = ''
+								for j in range(1,l):
+									phrase = arr[i-j]+' '+phrase
+								phrase = phrase[0:-1].lower()
+								if not phrase in phrase2count:
+									phrase2count[phrase] = 0
+								phrase2count[phrase] += 1
+		fr.close()
+	fw = open('phrase2count.txt','w')
+	for [phrase,count] in sorted(phrase2count.items(),key=lambda x:-x[1]):
+		fw.write(phrase+'\t'+str(count)+'\n')
+	fw.close()
+
+def SimpleAttributeExtraction():
+	paperid_path = []
+	fr = open('index.txt','rb')
+	for line in fr:
+		arr = line.strip('\r\n').split('\t')
+		paperid = arr[2]
+		path = '../text/'+arr[0]+'/'+arr[1]+'.txt'
+		paperid_path.append([paperid,path])
+	fr.close()
+	index,nindex = [{}],1 # phrase's index
+	fr = open('phrase2count.txt','rb')
+	for line in fr:
+		arr = line.strip('\r\n').split('\t')
+		phrase = arr[0]
+		words = phrase.split(' ')
+		n = len(words)
+		if n > nindex:
+			for i in range(nindex,n):
+				index.append({})
+			nindex = n
+		temp = index[n-1]
+		if n > 1:
+			for i in range(0,n-1):
+				word = words[i]
+				if not word in temp:
+					temp[word] = {}
+				temp = temp[word]
+			word = words[n-1]
+		else:
+			word = words[0]
+		temp[word] = phrase
+	fr.close()
+	fw = open('paper2attributes.txt','w')
+	for [paperid,path] in paperid_path:
+		attributeset = set()
+		fr = open(path,'rb')
+		for line in fr:
+			words = line.strip('\r\n').split(' ')
+			wordslower = line.strip('\r\n').lower().split(' ')
+			l = len(words)
+			i = 0
+			while i < l:
+				isvalid = False
+				for j in range(min(nindex,l-i),0,-1):
+					temp = index[j-1]
+					k = 0
+					while k < j and i+k < l:
+						tempword = wordslower[i+k]
+						if not tempword in temp: break
+						temp = temp[tempword]
+						k += 1
+					if k == j:
+						phrase = temp
+						attributeset.add(phrase)
+						isvalid = True
+						break
+				if isvalid:
+					i += j
+					continue
+				i += 1
+		fr.close()
+		if len(attributeset) == 0: continue
+		s = ''
+		for attribute in sorted(attributeset):
+			s += ','+attribute
+		fw.write(paperid+'\t'+s[1:]+'\n')
+	fw.close()
+
+def SimpleLabelExtraction():
+	paperid2conf = {}
+	fr = open('Papers.txt','rb')
+	for line in fr:
+		arr = line.strip('\r\n').split('\t')
+		paperid,conf = arr[0],arr[7]
+		paperid2conf[paperid] = conf
+	fr.close()
+	fw = open('paper2attributes2label.txt','w')
+	fr = open('paper2attributes.txt','rb')
+	for line in fr:
+		arr = line.strip('\r\n').split('\t')
+		paperid = arr[0]
+		if not paperid in paperid2conf: continue
+		conf = paperid2conf[paperid]
+		fw.write(arr[0]+'\t'+conf+'\t'+arr[1]+'\n')
+	fr.close()
+	fw.close()
+
+def Entropy(n,values):
+	ret = 0.0
+	for value in values:
+		p_i = 1.0*value/n
+		if not p_i == 0:
+			ret += -1.0*p_i*log2(p_i)
+	p_i = 1.0*(n-sum(values))/n
+	if not p_i == 0:
+		ret += -1.0*p_i*log2(p_i)
+	return ret
+
+def Gini(n,values):
+	ret = 1.0
+	for value in values:
+		p_i = 1.0*value/n
+		ret -= p_i*p_i
+	p_i = 1.0*(n-sum(values))/n
+	ret -= p_i*p_i
+	return ret
+
+def Output(entry):
+	print entry[0],0.001*int(1000.0*entry[1][0]),0.001*int(1000.0*entry[1][1]),entry[2], \
+		0.001*int(1000.0*entry[2][0]/(entry[2][0]+entry[2][1])), \
+		0.001*int(1000.0*entry[2][2]/(entry[2][2]+entry[2][3]))
+
+def OutputStr(entry):
+	print entry[0],entry[1][0],entry[1][1],entry[2]
+
+def DecisionTreeFirstFeature():
+	positive = 'kdd' # SIGKDD Conference on Knowledge Discovery and Data Mining
+	paper2label,paper2attributes,attribute2papers = {},{},{}
+	fr = open('paper2attributes2label.txt','rb')
+	for line in fr:
+		arr = line.strip('\r\n').split('\t')
+		paper = arr[0]
+		label = (arr[1] == positive)
+		paper2label[paper] = label
+		attributes = arr[2].split(',')
+		paper2attributes[paper] = attributes
+		for attribute in attributes:
+			if not attribute in attribute2papers:
+				attribute2papers[attribute] = []
+			attribute2papers[attribute].append(paper)
+	fr.close()
+
+	nY,nYpos = 0,0
+	for [paper,label] in paper2label.items():
+		nY += 1
+		if label: nYpos += 1
+	print '----- -----'
+	print 'All','KDD','NotKDD'
+	print nY,nYpos,nY-nYpos,0.001*int(1000.0*nYpos/nY)
+	print ''
+	HY = Entropy(nY,[nYpos])
+	GiniY = Gini(nY,[nYpos])
+
+	attribute_metrics = []
+	for [attribute,papers] in attribute2papers.items():
+		nXyesY = len(papers)
+		nXnoY = nY-nXyesY
+		nXyesYpos = 0
+		for paper in papers:
+			label = paper2label[paper]
+			if label: nXyesYpos += 1
+		nXnoYpos = nYpos-nXyesYpos
+		HXyesY = 1.0*nXyesY/nY * Entropy(nXyesY,[nXyesYpos])
+		HXnoY = 1.0*nXnoY/nY * Entropy(nXnoY,[nXnoYpos])
+		InfoGain = HY-(HXyesY+HXnoY)
+
+		GiniXyesY = 1.0*nXyesY/nY * Gini(nXyesY,[nXyesYpos])
+		GiniXnoY = 1.0*nXnoY/nY * Gini(nXnoY,[nXnoYpos])
+		DeltaGini = GiniY-(GiniXyesY+GiniXnoY)
+		
+		attribute_metrics.append([attribute,[InfoGain,DeltaGini],[nXyesYpos,nXyesY-nXyesYpos,nXnoYpos,nXnoY-nXnoYpos]])
+
+	bestattributeset = set()
+
+	print '----- First Feature to Select in ID3: Information Gain -----'
+	OutputStr(['Attribute',['InfoGain','DeltaGini'],['HasWord & KDD','HasWord & NotKDD','NoWord & KDD','NoWord & NotKDD']])
+	sorted_attribute_metrics = sorted(attribute_metrics,key=lambda x:-x[1][0])
+	for i in range(0,5):
+		Output(sorted_attribute_metrics[i])
+		bestattributeset.add(sorted_attribute_metrics[i][0])
+	print ''
+
+	print '----- First Feature to Select in CART: Delta Gini index -----'
+	OutputStr(['Attribute',['InfoGain','DeltaGini'],['HasWord & KDD','HasWord & NotKDD','NoWord & KDD','NoWord & NotKDD']])
+	sorted_attribute_metrics = sorted(attribute_metrics,key=lambda x:-x[1][1])
+	for i in range(0,5):
+		Output(sorted_attribute_metrics[i])
+		bestattributeset.add(sorted_attribute_metrics[i][0])
+	print ''
+
+	fw = open('bestattributes.txt','w')
+	for attribute in sorted(bestattributeset):
+		fw.write(attribute+'\n')
+	fw.close()
+
+def NaiveBayes():
+	positive = 'kdd' # SIGKDD Conference on Knowledge Discovery and Data Mining
+	bestattributeset = set()
+	fr = open('bestattributes.txt','rb')
+	for line in fr:
+		attribute = line.strip('\r\n')
+		bestattributeset.add(attribute)
+	fr.close()
+
+	paper2label,paper2attributes,attribute2papers = {},{},{}
+	fr = open('paper2attributes2label.txt','rb')
+	for line in fr:
+		arr = line.strip('\r\n').split('\t')
+		attributeset = set(arr[2].split(','))
+		selectedattributeset = bestattributeset & attributeset
+		#if len(selectedattributeset) < 2 or len(selectedattributeset) > 4: continue
+		paper = arr[0]
+		label = (arr[1] == positive)
+		paper2label[paper] = label
+		paper2attributes[paper] = sorted(selectedattributeset)
+		for attribute in selectedattributeset:
+			if not attribute in attribute2papers:
+				attribute2papers[attribute] = []
+			attribute2papers[attribute].append(paper)
+	fr.close()
+
+	for [paper,attributes] in paper2attributes.items():
+		print paper,attributes
+
+	nY,nYpos = 0,0
+	for [paper,label] in paper2label.items():
+		nY += 1
+		if label: nYpos += 1
+	print ''
+	print '----- -----'
+	print 'All','KDD','NotKDD'
+	print nY,nYpos,nY-nYpos,0.001*int(1000.0*nYpos/nY)
+	print '----- Prior Probability -----'
+	PYesPrior = 1.0*nYpos/nY
+	PNoPrior = 1.0*(nY-nYpos)/nY
+	print 'P(KDD) = ',0.001*int(1000.0*PYesPrior)
+	print 'P(NotKDD) = ',0.001*int(1000.0*PNoPrior)
+	print ''
+
+	allpapers = paper2label.keys()
+	random.shuffle(allpapers)
+	for i in range(0,5):
+		paper = allpapers[i]
+		print '----- Paper ',i,':',paper,'-->',paper2label[paper],' -----'
+		attributes = paper2attributes[paper]
+		print '----- Likelihood -----'
+		PYesLikelihoodAll = 1.0
+		PNoLikelihoodAll = 1.0
+		for [attribute,papers] in attribute2papers.items():
+			if attribute in attributes:
+				# P(word=yes|KDD), P(word=yes|NotKDD)
+				nYesLikelihood = 0
+				nNoLikelihood = 0
+				for [paper,label] in paper2label.items():
+					if paper in papers:
+						if label: nYesLikelihood += 1
+						else: nNoLikelihood += 1
+				PYesLikelihood = 1.0*nYesLikelihood/nYpos
+				PNoLikelihood = 1.0*nNoLikelihood/(nY-nYpos)
+				PYesLikelihoodAll *= PYesLikelihood
+				PNoLikelihoodAll *= PNoLikelihood
+			else:
+				# P(word=no|KDD), P(word=no|NotKDD)
+				nYesLikelihood = 0
+				nNoLikelihood = 0
+				for [paper,label] in paper2label.items():
+					if not paper in papers:
+						if label: nYesLikelihood += 1
+						else: nNoLikelihood += 1
+				PYesLikelihood = 1.0*nYesLikelihood/nYpos
+				PNoLikelihood = 1.0*nNoLikelihood/(nY-nYpos)
+				PYesLikelihoodAll *= PYesLikelihood
+				PNoLikelihoodAll *= PNoLikelihood
+		print 'P(X|KDD) = ',0.001*int(1000.0*PYesLikelihoodAll)
+		print 'P(X|NotKDD) = ',0.001*int(1000.0*PNoLikelihoodAll)
+		print '----- Posteriori Probability -----'
+		PYesPost = PYesPrior*PYesLikelihoodAll
+		PNoPost = PNoPrior*PNoLikelihoodAll
+		print 'P(KDD|X) ~ P(X|KDD)P(KDD)',0.0001*int(10000.0*PYesPost)
+		print 'P(NotKDD|X) ~ P(X|NotKDD)P(NotKDD)',0.0001*int(10000.0*PNoPost)
+		print '--> Prediction:',(PYesPost > PNoPost)
+		print ''
+
+def SimpleEntityTyping():
+	n_type = 4
+	s_method = 'method algorithm model approach framework process scheme implementation procedure strategy architecture'
+	s_problem = 'problem technique process system application task evaluation tool paradigm benchmark software'
+	s_dataset = 'data dataset database'
+	s_metric = 'value score measure metric function parameter'
+	types = ['METHOD','PROBLEM','DATASET','METRIC']
+	wordsets = [set(s_method.split(' ')),set(s_problem.split(' ')),set(s_dataset.split(' ')),set(s_metric.split(' '))]
+
+	paperid_path = []
+	fr = open('index.txt','rb')
+	for line in fr:
+		arr = line.strip('\r\n').split('\t')
+		paperid = arr[2]
+		path = '../text/'+arr[0]+'/'+arr[1]+'.txt'
+		paperid_path.append([paperid,path])
+	fr.close()
+	index,nindex = [{}],1 # phrase's index
+	fr = open('phrase2count.txt','rb')
+	for line in fr:
+		arr = line.strip('\r\n').split('\t')
+		phrase = arr[0]
+		words = phrase.split(' ')
+		n = len(words)
+		if n > nindex:
+			for i in range(nindex,n):
+				index.append({})
+			nindex = n
+		temp = index[n-1]
+		if n > 1:
+			for i in range(0,n-1):
+				word = words[i]
+				if not word in temp:
+					temp[word] = {}
+				temp = temp[word]
+			word = words[n-1]
+		else:
+			word = words[0]
+		temp[word] = phrase
+	fr.close()
+
+	# "__ __ __ __ __ support vector machine __ __ __ __ __"
+	n_context = 5
+	phrase2classifiers = {}
+	for [paperid,path] in paperid_path:
+		fr = open(path,'rb')
+		for line in fr:
+			words = line.strip('\r\n').split(' ')
+			wordslower = line.strip('\r\n').lower().split(' ')
+			l = len(words)
+			i = 0
+			while i < l:
+				isvalid = False
+				for j in range(min(nindex,l-i),0,-1):
+					temp = index[j-1]
+					k = 0
+					while k < j and i+k < l:
+						tempword = wordslower[i+k]
+						if not tempword in temp: break
+						temp = temp[tempword]
+						k += 1
+					if k == j:
+						phrase = temp
+						if not phrase in phrase2classifiers:
+							phrase2classifiers[phrase] = [0,[[0 for t in range(0,n_type)] for c in range(0,n_context)]]
+						phrase2classifiers[phrase][0] += 1
+						for c in range(0,n_context):
+							if i-1-c >= 0:
+								trigger = wordslower[i-1-c]
+								for t in range(0,n_type):
+									if trigger in wordsets[t]:
+										phrase2classifiers[phrase][1][c][t] += 1
+#										for _c in range(c,n_context):
+#											phrase2classifiers[phrase][1][_c][t] += 1
+							if i+k+c < l:
+								trigger = wordslower[i+k+c]
+								for t in range(0,n_type):
+									if trigger in wordsets[t]:
+										phrase2classifiers[phrase][1][c][t] += 1
+#										for _c in range(c,n_context):
+#											phrase2classifiers[phrase][1][_c][t] += 1
+						isvalid = True
+						break
+				if isvalid:
+					i += j
+					continue
+				i += 1
+		fr.close()
+	fw = open('entitytyping.txt','w')
+	s = 'ENTITY\tCOUNT'
+	for c in range(0,n_context): s += '\tWINDOWSIZE'+str(c+1)
+	fw.write(s+'\n')
+	for [phrase,[count,ctmatrix]] in sorted(phrase2classifiers.items(),key=lambda x:-x[1][0]):
+		s = phrase+'\t'+str(count)
+		for c in range(0,n_context):
+			maxv,maxt = -1,-1
+			for t in range(0,n_type):
+				v = ctmatrix[c][t]
+				if v > maxv:
+					maxv = v
+					maxt = t
+			if maxv == 0:
+				s += '\tN/A'
+			else:
+				s += '\t'+types[maxt]
+				for t in range(0,n_type):
+					v = ctmatrix[c][t]
+					if v == 0: continue
+					s += ' '+types[t][0]+types[t][-1]+':'+str(v)
+		fw.write(s+'\n')
+	fw.close()
+	
 class Paper(object):
 	def __init__(self, pid, title, year, conf):
 		self.PID = pid
@@ -99,41 +577,6 @@ class Paper(object):
 		except KeyError:
 			self.keywords.add('na')
 	
-def tokenizer(text):
-	# based on example code given in the ResponseBot Demo
-	# this processes text into a form that is simpler to analyze
-	ret = []
-	for x in [',','.','--','!','?',';','(',')','/','"']:
-		text = text.replace(x,' '+x+' ')
-	for word in text.split(' '):
-		if word == '': continue
-		ret.append(word.lower())
-	return ret
-
-def check_string_guality(str):
-	# ckeck if a string has any undesired characters
-	if '<' in str:
-		return False
-	if '>' in str:
-		return False
-	if '[' in str:
-		return False
-	if ']' in str:
-		return False
-	if '{' in str:
-		return False
-	if '}' in str:
-		return False
-	if '=' in str:
-		return False
-	if '+' in str:
-		return False
-	if ':' in str:
-		return False
-	if '-' in str:
-		return False
-	
-	return True
 if __name__ == '__main__':
 	# csv for PID,PDFID,title,conf,folder,year,affil,authors,author_ids,keywords
 	integrated_data = open('data/integrated.csv', 'w+')
@@ -237,24 +680,6 @@ if __name__ == '__main__':
 			words = tokenizer(line.rstrip())
 			allwords.append(words)
 	#for words in allwords: print words
-	
-
-	'''
-	# scan the words in all files to get support counts for entity words
-	for doc in all_files:
-		for line in open(doc):
-			temp = tokenizer(line.rstrip())
-			for word in temp:
-				if word in stopwords or len(word) == 1 or word.isdigit(): continue
-				if not word in entity_candidates:
-					entity_candidates[word] = 0
-				entity_candidates[word] += 1
-	print(entity_candidates)
-	#output
-	for [word,support] in sorted(entity_candidates.items(), key=lambda x:-x[1]):
-		if support == 1: break
-		print word,support
-	'''
 
 	# find the support for each entity candidate (ResponseBot 2)
 	word2support = {}
@@ -340,16 +765,15 @@ if __name__ == '__main__':
 	for transaction in transactions:
 		if not transaction: continue
 		t = ','.join(transaction)
-		if check_string_guality(t) is False: continue
-		t = t.replace('#', '')
-		t = t.replace('*', '')
+		#if check_string_guality(t) is False: continue
+		#t = t.replace('#', '')
+		#t = t.replace('*', '')
 		transaction_file.write('{}\n'.format(t))
 		#sys.stdout.write('.')
 
 	print("Preforming Apriori...")
 	# Apriori (ResponseBot 5)
 	# http://www.borgelt.net/pyfim.html	
-	from fim import apriori, fpgrowth
 	patterns = apriori(transactions,supp=-1000) # +: percentage -: absolute number
 	#print(type(patterns)) -> patterns is a list
 	# output
@@ -386,5 +810,120 @@ if __name__ == '__main__':
 	# for (ruleleft,ruleright,support,confidence) in sorted(rules,key=lambda x:x[0]):
 		# print ruleleft,'-->',ruleright,support,confidence
 	# print 'Number of rules:',len(rules)
+	
+	# Task 2: Entity Mining - Name Detection (paperclassification.py functions)
+	SimpleEntityExtraction()
+	SimpleAttributeExtraction()
+	SimpleLabelExtraction()
+	DecisionTreeFirstFeature()
+	NaiveBayes()
+
+	# Task 3: Entity Typing (entitytyping.py functions)
+	SimpleEntityTyping()
+
+	'''
+	# Task 4: Finding two-four authors that often collaborate
+	# basically we'll do a similar thing we already did with the keywords with the author data
+	author_lists = [] # list of lists of authors on each paper
+	aid_lists = [] # list of lists of author id's on each paper
+	for key in paper_author:
+		author_list = []
+		aid_list = []
+		for each in paper_author[key]:
+			aid_list.append(each[0])
+			name = author_names[each[0]]
+			author_list.append(name)
+		#print author_list
+		#print aid_list
+		author_lists.append(author_list)
+		aid_lists.append(aid_list)
+
+	# find the support for each entity candidate (ResponseBot 2)
+	author2support = {}
+	for words in author_lists:
+		for word in words:
+			#if word in stopwords or len(word) == 1 or word.isdigit() or len(word) > 25: continue
+			#if not word.isalnum(): continue
+			if not word in author2support:
+				author2support[word] = 0
+			author2support[word] += 1
+	# output
+	#for [word,support] in sorted(author2support.items(),key=lambda x:-x[1]):
+	#	if support == 1: break
+	#	print word,support
+
+	# Find bigram for each entity candidate (ResponseBot 3)
+	author2count = {}
+	for words in author_lists:
+		for word in words:
+			#if word in stopwords or len(word) == 1 or word.isdigit() or len(word) > 25: continue
+			#if not word.isalnum(): continue
+			if not word in author2count:
+				author2count[word] = 0
+			author2count[word] += 1
+
+	abigram2score = {} # bigram's count, first word's count, second word's count, significance score
+	L = 0
+	for words in author_lists:
+		n = len(words)
+		L += n
+		for i in range(0, n-1):
+			if words[i] in author2count and words[i+1] in author2count:
+				bigram = words[i] + '_' + words[i+1]
+				if not bigram in abigram2score:
+					abigram2score[bigram] = [0,author2count[words[i]],author2count[words[i+1]],0.0]
+				abigram2score[bigram][0] += 1
+	for bigram in abigram2score:
+		abigram2score[bigram][3] = (1.0*abigram2score[bigram][0]-1.0*abigram2score[bigram][1]*abigram2score[bigram][2]/L)/((1.0*abigram2score[bigram][0])**0.5)
+	# output
+	#print 'bigram', 'count-bigram', 'count-first-word','count-second-word','significance-score'
+	#for [bigram,score] in sorted(abigram2score.items(),key=lambda x:-x[1][3]):
+	#	print bigram,score[0],score[1],score[2],score[3]
+
+	# find transactions for bigrams (ResponseBot 4)
+	abigramdict = {}
+	for bigram in abigram2score:
+		if abigram2score[bigram][0] > 1:
+			#[firstword,secondword] = bigram.split('_')
+			firstword = bigram.split('_')[0]
+			secondword = bigram.split('_')[0]
+			#print bigram.split('_')
+			if not firstword in abigramdict:
+				abigramdict[firstword] = set()
+			abigramdict[firstword].add(secondword)
+
+	author_transactions = [] # response
+	for words in author_lists:
+		transaction = set() # set of words/bigrams
+		n = len(words)
+		i = 0
+		while i < n:
+			if words[i] in abigramdict and i+1 < n and words[i+1] in abigramdict[words[i]]:
+				transaction.add(words[i]+'_'+words[i+1])
+				i += 2
+				continue
+			#if words[i] in stopwords or len(words[i]) == 1 or words[i].isdigit() or not words[i].isalnum() or len(words[i]) > 25:
+			#	i += 1
+			#	continue
+			transaction.add(words[i])
+			i += 1
+		if not transaction: continue
+		author_transactions.append(list(transaction))
+	# output
+	#for transaction in author_transactions:
+	#	print transaction
+
+	print "Done with author transactions"
+
+
+	#patterns = apriori(author_lists, supp=-12)
+	patterns = apriori(author_transactions, supp=-3)
+	print '-------- Author Affiliation Apriori --------'
+	for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
+		if len(pattern) <= 1: continue
+		print pattern,support
+	print 'Number of patterns:',len(patterns)
+	'''
+
 	
 	print("Done.")
