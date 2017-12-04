@@ -215,7 +215,7 @@ if __name__ == '__main__':
 	num_test = 0
 	test_files = list()
 	print("Collecting words from documents...")
-	for root, dirs, files in os.walk("../text"):
+	for root, dirs, files in os.walk("../text4"):
 		for subdir in dirs:
 			path = os.path.join(root, subdir)
 			for subroot, subdirs, subfiles in os.walk(path):
@@ -232,24 +232,6 @@ if __name__ == '__main__':
 			words = tokenizer(line.rstrip())
 			allwords.append(words)
 	#for words in allwords: print words
-	
-
-	'''
-	# scan the words in all files to get support counts for entity words
-	for doc in all_files:
-		for line in open(doc):
-			temp = tokenizer(line.rstrip())
-			for word in temp:
-				if word in stopwords or len(word) == 1 or word.isdigit(): continue
-				if not word in entity_candidates:
-					entity_candidates[word] = 0
-				entity_candidates[word] += 1
-	print(entity_candidates)
-	#output
-	for [word,support] in sorted(entity_candidates.items(), key=lambda x:-x[1]):
-		if support == 1: break
-		print word,support
-	'''
 
 	# find the support for each entity candidate (ResponseBot 2)
 	word2support = {}
@@ -380,5 +362,29 @@ if __name__ == '__main__':
 	# for (ruleleft,ruleright,support,confidence) in sorted(rules,key=lambda x:x[0]):
 		# print ruleleft,'-->',ruleright,support,confidence
 	# print 'Number of rules:',len(rules)
+
+	# Task 4: Finding two-four authors that often collaborate
+	# basically we'll do a similar thing we already did with the keywords with the author data
+	author_lists = [] # list of lists of authors on each paper
+	aid_lists = [] # list of lists of author id's on each paper
+	for key in paper_author:
+		author_list = []
+		aid_list = []
+		for each in paper_author[key]:
+			aid_list.append(each[0])
+			name = author_names[each[0]]
+			author_list.append(name)
+		#print author_list
+		#print aid_list
+		author_lists.append(author_list)
+		aid_lists.append(aid_list)
+
+	patterns = apriori(author_lists, supp=-10)
+	print '-------- Author Affiliation Apriori --------'
+	for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
+		if len(pattern) <= 1: continue
+		print pattern,support
+	print 'Number of patterns:',len(patterns)
+
 	
 	print("Done.")
