@@ -67,7 +67,7 @@ def tokenizer(text):
 	# based on example code given in the ResponseBot Demo
 	# this processes texts into a form that is simpler to analyze
 	ret = []
-	for x in [',','--','!','?',';','(',')','"']: # always remove
+	for x in [',','--','!','?',';','(',')','"', '\\']: # always remove
 		text = text.replace(x,' '+x+' ')
 	for x in ['.', '/']: # remove only if it's end punctuation
 		text = text.replace(x+' ', ' '+x+' ')
@@ -96,6 +96,8 @@ def check_string_guality(str):
 	if ':' in str:
 		return False
 	if '-' in str:
+		return False
+	if '\\' in str:
 		return False
 	
 	return True
@@ -813,13 +815,13 @@ if __name__ == '__main__':
 	
 	# Task 2: Entity Mining - Name Detection (paperclassification.py functions)
 	SimpleEntityExtraction()
-	SimpleAttributeExtraction()
-	SimpleLabelExtraction()
-	DecisionTreeFirstFeature()
-	NaiveBayes()
+	#SimpleAttributeExtraction()
+	#SimpleLabelExtraction()
+	#DecisionTreeFirstFeature()
+	#NaiveBayes()
 
 	# Task 3: Entity Typing (entitytyping.py functions)
-	SimpleEntityTyping()
+	SimpleEntityTyping() # must run SimpleEntityExtraction before this code
 
 	'''
 	# Task 4: Finding two-four authors that often collaborate
