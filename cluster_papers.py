@@ -32,6 +32,9 @@ def build_file_list():
 	#print("Collected {} files".format(str(len(file_list))))
 	return file_list
 
+def build_matrix(file):
+	
+
 if __name__ == '__main__':
 	allfiles = build_file_list()
 	for paper in allfiles:
@@ -40,4 +43,9 @@ if __name__ == '__main__':
 		
 		# do k-means
 		# http://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
+		# All the methods accept standard data matrices of shape [n_samples, n_features]
 	
+	# solutions:
+		# vector encoding of entities- represent document as vector of encodings where 1 means it is present and 0 for not
+		# what are the entities?  (various keywords?)
+		# this makes it difficult to find distance- dont use Eucliedean, maybe hamming
