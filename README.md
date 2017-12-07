@@ -1,22 +1,23 @@
 # SciBot
 Data Science Fall 2017 project to perform data processing, cleaning, and analysis on Data Science Papers
 
+All output files are stored in the data folder
+Initial .txt files about the text are stored in the microsoft folder
+Complete text is stored in the text folder
+
 Data Integration and Cleaning:
 ------------------------------
-    python integrate.py
+    python task1.py
 	
 	Produces CSV with PID,PDFID,title,conf,folder,year,affil,authors,author_ids,keywords
 	
-	We end up with 5854 papers, stored in microsoft/integrated.csv.
+	Reads from: microsoft/Authors.txt, microsoft/PaperAuthorAffiliations.txt, microsoft/PaperKeywords.txt, microsoft/index.txt, microsoft/Papers.txt
+	Writes to: integrated.csv (stores the cleaned index.txt)
 
 Keyword Extraction:
 -------------------
 	python keywords.py
-	
-	We extracted keywords by doing frequent pattern mining:
-		-	First we tokenized all the papers by separating any punctuation and splitting the text up by spaces.
-		-	Next we cleaned the data further by removing any sets that had strange characters, numbers, or other symbols
-		-	To generate the frequent itemsets we used both Apriori and FP-Growth with a minimum support of 1000
+	python task2.py
 		
 	Output:
 	
@@ -31,3 +32,52 @@ Keyword Extraction:
 		Building non-single itemsets with FP-Growth...
 		Number of patterns: 30902
 		Done.
+
+	task2.py...
+	Reads from: microsoft/index.txt, text/*, microsoft/Papers.txt
+	Writes to: data/phrase2count.txt (each entity candidate & its count), data/paper2attributes.txt (contains paper id and entity names found in it), data/paper2attributes2label.txt (attributes, paper id, and name of conference)
+
+Entity Typing:
+--------------
+	python task3.py
+	(must run task 2 before task 3 in order to generate phrase2count.txt)
+
+	Reads from: microsoft/index.txt, text/*, data/phrase2count.txt
+	Writes to: data/entitytyping.txt (classification of each entity), 
+
+Collaboration Discovery:
+------------------------
+	python task4.py
+
+	Reads from: microsoft/Authors.txt, microsoft/PaperAuthorAffiliations.txt, 
+	Writes to: data/authorcollaborations.txt (Authors collaborations, support)
+
+Problem-Method Association Mining:
+----------------------------------
+	python task5.py
+
+	Reads from: microsoft/PaperKeywords.txt, microsoft/stopwords.txt, text/*, 
+	Writes to: data/our_keywords.txt, data/keyword_bigrams.txt, data/keyword_counts.txt, data/onetomany.txt
+
+
+Problem/Method/Author-to-Conference Association:
+------------------------------------------------
+	python task6.py
+
+	Reads from:
+	Writes to:
+
+Paper Clustering:
+-----------------
+	python task7.py
+
+	Reads from:
+	Writes to:
+
+Data Visualization:
+-------------------
+
+
+
+	Reads from:
+	Writes to:
