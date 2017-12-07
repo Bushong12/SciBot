@@ -217,9 +217,9 @@ if __name__ == '__main__':
             words = tokenizer(line.rstrip())
             allwords.append(words)
 
-    word_support = calc_support(allwords)
-    bigrams = make_bigrams(allwords)
-    transactions = make_transactions(bigrams)
+    #word_support = calc_support(allwords)
+    #bigrams = make_bigrams(allwords)
+    #transactions = make_transactions(bigrams)
     get_nonsingle_itemsets(transactions, nonsingle_file)
     get_onetomany_rules(transactions, onetomany_file)
 

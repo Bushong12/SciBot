@@ -52,9 +52,12 @@ def SimpleEntityExtraction():
                                 phrase2count[phrase] += 1
         fr.close()
     fw = open('data/phrase2count.txt','w')
+    num_entities = 0
     for [phrase,count] in sorted(phrase2count.items(),key=lambda x:-x[1]):
         fw.write(phrase+'\t'+str(count)+'\n')
+        num_entities += 1
     fw.close()
+    print('Number of entities: {}'.format(str(num_entities)))
 
 def SimpleAttributeExtraction():
     paperid_path = []
@@ -170,171 +173,11 @@ def Output(entry):
 def OutputStr(entry):
     print entry[0],entry[1][0],entry[1][1],entry[2]
 
-def DecisionTreeFirstFeature():
-    positive = 'kdd' # SIGKDD Conference on Knowledge Discovery and Data Mining
-    paper2label,paper2attributes,attribute2papers = {},{},{}
-    fr = open('data/paper2attributes2label.txt','rb')
-    for line in fr:
-        arr = line.strip('\r\n').split('\t')
-        paper = arr[0]
-        label = (arr[1] == positive)
-        paper2label[paper] = label
-        attributes = arr[2].split(',')
-        paper2attributes[paper] = attributes
-        for attribute in attributes:
-            if not attribute in attribute2papers:
-                attribute2papers[attribute] = []
-            attribute2papers[attribute].append(paper)
-    fr.close()
-
-    nY,nYpos = 0,0
-    for [paper,label] in paper2label.items():
-        nY += 1
-        if label: nYpos += 1
-    print '----- -----'
-    print 'All','KDD','NotKDD'
-    print nY,nYpos,nY-nYpos,0.001*int(1000.0*nYpos/nY)
-    print ''
-    HY = Entropy(nY,[nYpos])
-    GiniY = Gini(nY,[nYpos])
-
-    attribute_metrics = []
-    for [attribute,papers] in attribute2papers.items():
-        nXyesY = len(papers)
-        nXnoY = nY-nXyesY
-        nXyesYpos = 0
-        for paper in papers:
-            label = paper2label[paper]
-            if label: nXyesYpos += 1
-        nXnoYpos = nYpos-nXyesYpos
-        HXyesY = 1.0*nXyesY/nY * Entropy(nXyesY,[nXyesYpos])
-        HXnoY = 1.0*nXnoY/nY * Entropy(nXnoY,[nXnoYpos])
-        InfoGain = HY-(HXyesY+HXnoY)
-
-        GiniXyesY = 1.0*nXyesY/nY * Gini(nXyesY,[nXyesYpos])
-        GiniXnoY = 1.0*nXnoY/nY * Gini(nXnoY,[nXnoYpos])
-        DeltaGini = GiniY-(GiniXyesY+GiniXnoY)
-        
-        attribute_metrics.append([attribute,[InfoGain,DeltaGini],[nXyesYpos,nXyesY-nXyesYpos,nXnoYpos,nXnoY-nXnoYpos]])
-
-    bestattributeset = set()
-
-    print '----- First Feature to Select in ID3: Information Gain -----'
-    OutputStr(['Attribute',['InfoGain','DeltaGini'],['HasWord & KDD','HasWord & NotKDD','NoWord & KDD','NoWord & NotKDD']])
-    sorted_attribute_metrics = sorted(attribute_metrics,key=lambda x:-x[1][0])
-    for i in range(0,5):
-        Output(sorted_attribute_metrics[i])
-        bestattributeset.add(sorted_attribute_metrics[i][0])
-    print ''
-
-    print '----- First Feature to Select in CART: Delta Gini index -----'
-    OutputStr(['Attribute',['InfoGain','DeltaGini'],['HasWord & KDD','HasWord & NotKDD','NoWord & KDD','NoWord & NotKDD']])
-    sorted_attribute_metrics = sorted(attribute_metrics,key=lambda x:-x[1][1])
-    for i in range(0,5):
-        Output(sorted_attribute_metrics[i])
-        bestattributeset.add(sorted_attribute_metrics[i][0])
-    print ''
-
-    fw = open('data/bestattributes.txt','w')
-    for attribute in sorted(bestattributeset):
-        fw.write(attribute+'\n')
-    fw.close()
-
-def NaiveBayes():
-    positive = 'kdd' # SIGKDD Conference on Knowledge Discovery and Data Mining
-    bestattributeset = set()
-    fr = open('data/bestattributes.txt','rb')
-    for line in fr:
-        attribute = line.strip('\r\n')
-        bestattributeset.add(attribute)
-    fr.close()
-
-    paper2label,paper2attributes,attribute2papers = {},{},{}
-    fr = open('data/paper2attributes2label.txt','rb')
-    for line in fr:
-        arr = line.strip('\r\n').split('\t')
-        attributeset = set(arr[2].split(','))
-        selectedattributeset = bestattributeset & attributeset
-        #if len(selectedattributeset) < 2 or len(selectedattributeset) > 4: continue
-        paper = arr[0]
-        label = (arr[1] == positive)
-        paper2label[paper] = label
-        paper2attributes[paper] = sorted(selectedattributeset)
-        for attribute in selectedattributeset:
-            if not attribute in attribute2papers:
-                attribute2papers[attribute] = []
-            attribute2papers[attribute].append(paper)
-    fr.close()
-
-    for [paper,attributes] in paper2attributes.items():
-        print paper,attributes
-
-    nY,nYpos = 0,0
-    for [paper,label] in paper2label.items():
-        nY += 1
-        if label: nYpos += 1
-    print ''
-    print '----- -----'
-    print 'All','KDD','NotKDD'
-    print nY,nYpos,nY-nYpos,0.001*int(1000.0*nYpos/nY)
-    print '----- Prior Probability -----'
-    PYesPrior = 1.0*nYpos/nY
-    PNoPrior = 1.0*(nY-nYpos)/nY
-    print 'P(KDD) = ',0.001*int(1000.0*PYesPrior)
-    print 'P(NotKDD) = ',0.001*int(1000.0*PNoPrior)
-    print ''
-
-    allpapers = paper2label.keys()
-    random.shuffle(allpapers)
-    for i in range(0,5):
-        paper = allpapers[i]
-        print '----- Paper ',i,':',paper,'-->',paper2label[paper],' -----'
-        attributes = paper2attributes[paper]
-        print '----- Likelihood -----'
-        PYesLikelihoodAll = 1.0
-        PNoLikelihoodAll = 1.0
-        for [attribute,papers] in attribute2papers.items():
-            if attribute in attributes:
-                # P(word=yes|KDD), P(word=yes|NotKDD)
-                nYesLikelihood = 0
-                nNoLikelihood = 0
-                for [paper,label] in paper2label.items():
-                    if paper in papers:
-                        if label: nYesLikelihood += 1
-                        else: nNoLikelihood += 1
-                PYesLikelihood = 1.0*nYesLikelihood/nYpos
-                PNoLikelihood = 1.0*nNoLikelihood/(nY-nYpos)
-                PYesLikelihoodAll *= PYesLikelihood
-                PNoLikelihoodAll *= PNoLikelihood
-            else:
-                # P(word=no|KDD), P(word=no|NotKDD)
-                nYesLikelihood = 0
-                nNoLikelihood = 0
-                for [paper,label] in paper2label.items():
-                    if not paper in papers:
-                        if label: nYesLikelihood += 1
-                        else: nNoLikelihood += 1
-                PYesLikelihood = 1.0*nYesLikelihood/nYpos
-                PNoLikelihood = 1.0*nNoLikelihood/(nY-nYpos)
-                PYesLikelihoodAll *= PYesLikelihood
-                PNoLikelihoodAll *= PNoLikelihood
-        print 'P(X|KDD) = ',0.001*int(1000.0*PYesLikelihoodAll)
-        print 'P(X|NotKDD) = ',0.001*int(1000.0*PNoLikelihoodAll)
-        print '----- Posteriori Probability -----'
-        PYesPost = PYesPrior*PYesLikelihoodAll
-        PNoPost = PNoPrior*PNoLikelihoodAll
-        print 'P(KDD|X) ~ P(X|KDD)P(KDD)',0.0001*int(10000.0*PYesPost)
-        print 'P(NotKDD|X) ~ P(X|NotKDD)P(NotKDD)',0.0001*int(10000.0*PNoPost)
-        print '--> Prediction:',(PYesPost > PNoPost)
-        print ''
-
 
 if __name__ == '__main__':
     # Task 2: Entity Mining - Name Detection (paperclassification.py functions)
     SimpleEntityExtraction()
     SimpleAttributeExtraction()
     SimpleLabelExtraction()
-    DecisionTreeFirstFeature()
-    NaiveBayes()
 
 

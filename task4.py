@@ -11,7 +11,7 @@ def init_author_dict():
         name = data[1]
         names[AID] = name
     return names
-    
+
 def init_paper_author_dict():
     # maps PID to list of authors that are a pair of (author_id, affiliation)
     d = dict()
@@ -25,11 +25,39 @@ def init_paper_author_dict():
         if PID not in d:
             d[PID] = list()
         d[PID].append(author_obj)
-    return d        
+    return d     
+
+def check_string_guality(str):
+    # ckeck if a string has any undesired characters
+    if '<' in str:
+        return False
+    if '>' in str:
+        return False
+    if '[' in str:
+        return False
+    if ']' in str:
+        return False
+    if '{' in str:
+        return False
+    if '}' in str:
+        return False
+    if '=' in str:
+        return False
+    if '+' in str:
+        return False
+    if ':' in str:
+        return False
+    if '-' in str:
+        return False
+    if '\\' in str:
+        return False
+    
+    return True   
 
 if __name__ == '__main__':
     author_names = init_author_dict()
     paper_author = init_paper_author_dict()
+    output_file = open('data/authorcollaborations.txt', 'w+')
 
     # Task 4: Finding two-four authors that often collaborate
     # basically we'll do a similar thing we already did with the keywords with the author data
@@ -114,6 +142,9 @@ if __name__ == '__main__':
             #if words[i] in stopwords or len(words[i]) == 1 or words[i].isdigit() or not words[i].isalnum() or len(words[i]) > 25:
             #   i += 1
             #   continue
+            if not check_string_guality(words[i]):
+                i += 1
+                continue
             transaction.add(words[i])
             i += 1
         if not transaction: continue
@@ -126,11 +157,15 @@ if __name__ == '__main__':
 
 
     #patterns = apriori(author_lists, supp=-12)
-    patterns = apriori(author_transactions, supp=-3)
+    patterns = apriori(author_transactions, supp=-10)
     print '-------- Author Affiliation Apriori --------'
+    #for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
+     #   if len(pattern) <= 1: continue
+      #  print pattern,support
     for (pattern,support) in sorted(patterns,key=lambda x:-x[1]):
+        #pattern is a tuple
         if len(pattern) <= 1: continue
-        print pattern,support
+        output_file.write('{} {} \n'.format(pattern, str(support)))
     print 'Number of patterns:',len(patterns)
 
 
