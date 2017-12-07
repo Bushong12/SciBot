@@ -4,6 +4,7 @@ Data Science Fall 2017 project to perform data processing, cleaning, and analysi
 All output files are stored in the data folder
 Initial .txt files about the text are stored in the microsoft folder
 Complete text is stored in the text folder
+dependencies.sh installs all necessary python libraries in order to run our code
 
 Data Integration and Cleaning:
 ------------------------------
@@ -63,21 +64,21 @@ Problem-Method Association Mining:
 Problem/Method/Author-to-Conference Association:
 ------------------------------------------------
 	python task6.py
+	** task 2 must be run before this task in order to create necessary files **
 
-	Reads from:
-	Writes to:
+	Reads from: data/paper2attributes2label.txt, 
+	Writes to: data/bestattributes.txt (top entitites)
 
 Paper Clustering:
 -----------------
 	python task7.py
 
-	Reads from:
+	Reads from: text/*
 	Writes to:
 
 Data Visualization:
 -------------------
+	python word_cloud_viz.py
 
-
-
-	Reads from:
-	Writes to:
+	Reads from: data/entitytyping.txt
+	Writes to: wordcloud.png
