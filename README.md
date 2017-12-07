@@ -58,7 +58,7 @@ Problem-Method Association Mining:
 	python task5.py
 
 	Reads from: microsoft/PaperKeywords.txt, microsoft/stopwords.txt, text/*, 
-	Writes to: data/our_keywords.txt, data/keyword_bigrams.txt, data/keyword_counts.txt, data/onetomany.txt
+	Writes to: data/our_keywords.txt (keywords we found using the ResponseBot functions), data/keyword_bigrams.txt (bigrams from our keywords), data/keyword_counts.txt (contains results of non-single itemsets), data/onetomany.txt (contains one-to-many association rules)
 
 
 Problem/Method/Author-to-Conference Association:
