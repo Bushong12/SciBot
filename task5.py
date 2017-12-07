@@ -171,7 +171,7 @@ def make_transactions(bigram2score):
     return transactions
 
 def get_nonsingle_itemsets(transactions, output_file):
-    #Closed Non-Single Itemsets (ResponseBot 7)
+    # Closed Non-Single Itemsets (ResponseBot 7)
     print("Building non-single itemsets with FP-Growth...")
     patterns = fpgrowth(transactions,target='c',supp=-1000,zmin=2)
     #output
@@ -179,6 +179,16 @@ def get_nonsingle_itemsets(transactions, output_file):
         p = ','.join(pattern)
         output_file.write('{} {} \n'.format(p, str(support)))
     print 'Number of patterns:',len(patterns)
+
+def get_onetomany_rules(transactions, output_file):
+    # One-to-Many Association Rules (ResponseBot 8)
+    rules = apriori(transactions,target='r',supp=-1000,conf=70,report='sc')
+    #output
+    for (ruleleft,ruleright,support,confidence) in sorted(rules,key=lambda x:x[0]):
+        #p = ','.join(pattern)
+        output_file.write('{}' + '-->' + ' {} {} {}\n'.format(ruleleft, ruleright, str(support), str(confidence)))
+        # print ruleleft,'-->',ruleright,support,confidence
+    # print 'Number of rules:',len(rules)
 
 
 #--------------- Global Variables ---------------#      
@@ -191,8 +201,10 @@ if __name__ == '__main__':
     new_keywords = open('data/our_keywords.txt', 'w+')
     # file for keyword bigrams
     bigram_file = open('data/keyword_bigrams.txt', 'w+')
-    # file for result of non-singe itemsets
+    # file for result of non-single itemsets
     nonsingle_file = open('data/keyword_counts.txt', 'w+')
+    # file for result of one-to-many association rules
+    onetomany_file = open('data/onetomany.txt', 'w+')
 
     # get list of paper files
     all_files = build_file_list()
@@ -208,7 +220,7 @@ if __name__ == '__main__':
     word_support = calc_support(allwords)
     bigrams = make_bigrams(allwords)
     transactions = make_transactions(bigrams)
-    get_nonsingle_itemsets(transactions, new_keywords)
+    get_nonsingle_itemsets(transactions, nonsingle_file)
+    get_onetomany_rules(transactions, onetomany_file)
 
 
-    

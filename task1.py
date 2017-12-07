@@ -49,6 +49,17 @@ def init_index_dict():
         index[PID] = [PDFID, folder]
     return index
 
+def concat_list(li):
+    # given a list concatenate it into a string with | as seperators 
+    str = ''
+    for i, x in enumerate(li):
+        if i < len(li)-1:
+            str += x
+            str += '|'
+        else:
+            str += x
+    return str
+
 class Paper(object):
     def __init__(self, pid, title, year, conf):
         self.PID = pid
@@ -88,30 +99,16 @@ class Paper(object):
         except KeyError:
             self.keywords.add('na')
 
-
 if __name__ == '__main__':
     # csv for PID,PDFID,title,conf,folder,year,affil,authors,author_ids,keywords
     integrated_data = open('data/integrated.csv', 'w+')
-    
     # initialize the dictionaries 
-    author_names = init_author_dict()
+    author_names = init_author_dict() # key: AID, value: Author name
     print('Number of authors: {}'.format(str(len(author_names))))
-    paper_author = init_paper_author_dict()
+    paper_author = init_paper_author_dict() # key: PID, value: [AID, aff]
     paper_keywords = init_paper_keywords_dict()
     index_dict = init_index_dict()
-    entity_candidates = dict()
-    allwords = [] # list containing the important words from each document that we'd want to scan through
-    stopwords = set()
-
-    # create set of entity candidates
-    for key in paper_keywords:
-        for word in paper_keywords[key]:
-            entity_candidates[word] = 0
-
-    # create set of stopwords - ResponseBot #2
-    for line in open('microsoft/stopwords.txt'):
-        word = line.strip('\r\n').lower()
-        stopwords.add(word)
+    author_titles = dict() # stores the key as the author name and the value as all of their titles
 
     # CSV header
     integrated_data.write("PID,PDFID,title,conf,folder,year,affil,authors,author_ids,keywords\n")
